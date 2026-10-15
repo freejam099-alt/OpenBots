@@ -50,17 +50,8 @@ android {
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-    // Wiki: khusus arm64-v8a saja — 1 APK, tidak universal.
+    // Wiki: khusus arm64-v8a saja — 1 APK (tanpa splits, agar kompatibel AGP 9).
     ndk { abiFilters += "arm64-v8a" }
-  }
-
-  splits {
-    abi {
-      isEnable = true
-      reset()
-      include("arm64-v8a")
-      isUniversalApk = false
-    }
   }
 
   buildTypes {

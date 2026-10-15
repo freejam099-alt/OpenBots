@@ -43,6 +43,7 @@ class WikiCloudLlmHelper(
 ) : LlmModelHelper {
   private val history = mutableListOf<WikiChatMessage>()
   private var job: Job? = null
+  @Volatile private var activeConn: HttpURLConnection? = null
   private val json = Json { ignoreUnknownKeys = true }
 
   override fun initialize(
@@ -78,12 +79,15 @@ class WikiCloudLlmHelper(
 
   override fun cleanUp(model: Model, onDone: () -> Unit) {
     job?.cancel()
+    try { activeConn?.disconnect() } catch (_: Exception) {}
+    activeConn = null
     history.clear()
     onDone()
   }
 
   override fun stopResponse(model: Model) {
     job?.cancel()
+    try { activeConn?.disconnect() } catch (_: Exception) {}
   }
 
   override fun runInference(
@@ -124,12 +128,32 @@ class WikiCloudLlmHelper(
           setRequestProperty("Accept", "text/event-stream")
         }
         conn.outputStream.use { it.write(body.toByteArray()) }
+        activeConn = conn
+        try {
         if (conn.responseCode !in 200..299) {
           val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP ${conn.responseCode}"
           withContext(Dispatchers.Main) { onError("Wiki cloud error: $err") }
           return@launch
         }
         val full = StringBuilder()
+        if (!cfg.streaming) {
+          val text = conn.inputStream.bufferedReader().readText()
+          try {
+            val obj = json.parseToJsonElement(text).jsonObject
+            val content = obj["choices"]?.jsonArray?.getOrNull(0)?.jsonObject
+              ?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content ?: ""
+            if (content.isNotEmpty()) {
+              full.append(content)
+              withContext(Dispatchers.Main) { resultListener(content, false, null) }
+            }
+          } catch (_: Exception) {
+            withContext(Dispatchers.Main) { onError("Wiki cloud error: respons non-stream tak terbaca") }
+            return@launch
+          }
+          history.add(WikiChatMessage("assistant", full.toString()))
+          withContext(Dispatchers.Main) { resultListener("", true, null) }
+          return@launch
+        }
         BufferedReader(InputStreamReader(conn.inputStream)).use { reader ->
           var line: String?
           while (reader.readLine().also { line = it } != null) {
@@ -154,6 +178,10 @@ class WikiCloudLlmHelper(
         }
         history.add(WikiChatMessage("assistant", full.toString()))
         withContext(Dispatchers.Main) { resultListener("", true, null) }
+        } finally {
+          try { conn.disconnect() } catch (_: Exception) {}
+          if (activeConn === conn) activeConn = null
+        }
       } catch (e: Exception) {
         if (e is kotlinx.coroutines.CancellationException) return@launch
         withContext(Dispatchers.Main) { onError(e.message ?: "Wiki cloud error") }

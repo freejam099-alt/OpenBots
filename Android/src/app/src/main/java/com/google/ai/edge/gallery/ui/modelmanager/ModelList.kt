@@ -100,7 +100,8 @@ fun ModelList(
       derivedStateOf {
         val trigger = task.updateTrigger.value
         if (trigger >= 0) {
-          task.models.toList().filter { !it.downloadInfo.imported }
+          // Wiki: chat hanya menampilkan model cloud (tanpa unduhan lokal).
+          task.models.toList().filter { !it.downloadInfo.imported && it.isCloud }
         } else {
           listOf()
         }

@@ -57,7 +57,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ListAlt
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Notifications
@@ -304,15 +304,12 @@ fun HomeScreen(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 SquareDrawerItem(
-                  label = stringResource(R.string.drawer_models_label),
-                  description = stringResource(R.string.drawer_models_description),
-                  icon = Icons.AutoMirrored.Rounded.ListAlt,
+                  label = stringResource(R.string.drawer_settings_description),
+                  description = stringResource(R.string.drawer_settings_label),
+                  icon = Icons.Rounded.Cloud,
                   onClick = {
+                    showSettingsDialog = true
                     scope.launch { drawerState.close() }
-                    scope.launch {
-                      delay(50)
-                      onModelsClicked()
-                    }
                   },
                   modifier = Modifier.weight(1f),
                   iconBrush =

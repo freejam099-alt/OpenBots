@@ -372,6 +372,20 @@ constructor(
       for (model in task.models) {
         model.preProcess()
       }
+      // Wiki: model cloud selalu tersedia, tanpa unduhan, di urutan pertama chat.
+      if (task.id == BuiltInTaskId.LLM_AGENT_CHAT) {
+        if (task.models.none { it.name == com.google.ai.edge.gallery.data.cloud.WIKI_CLOUD_MODEL_NAME }) {
+          val cloudModel = com.google.ai.edge.gallery.data.cloud.createWikiCloudModel()
+          cloudModel.preProcess()
+          task.models.add(0, cloudModel)
+        }
+        val existing = task.models.firstOrNull {
+          it.name == com.google.ai.edge.gallery.data.cloud.WIKI_CLOUD_MODEL_NAME
+        }
+        if (existing != null && _uiState.value.selectedModel.name.isEmpty()) {
+          _uiState.update { it.copy(selectedModel = existing) }
+        }
+      }
       // Move the model that is best for this task to the front.
       val bestModel = task.models.find { it.bestForTaskIds.contains(task.id) }
       if (bestModel != null) {
@@ -1555,7 +1569,13 @@ constructor(
         if (checkedModelNames.contains(model.name)) {
           continue
         }
-        modelDownloadStatus[model.name] = getModelDownloadStatus(model = model)
+        // Wiki cloud: selalu siap pakai, tidak ada unduhan.
+        modelDownloadStatus[model.name] =
+          if (model.isCloud) {
+            ModelDownloadStatus(status = ModelDownloadStatusType.SUCCEEDED)
+          } else {
+            getModelDownloadStatus(model = model)
+          }
         checkedModelNames.add(model.name)
         checkedModels.add(model)
       }
@@ -1696,7 +1716,11 @@ constructor(
   }
 
   private fun groupTasksByCategory(): Map<String, List<Task>> {
-    val tasks = getActiveCustomTasks().map { it.task }.filter { it.id != BuiltInTaskId.LLM_TEST }
+    // Wiki: hanya Agent Skills chat yang tampil sebagai UI utama.
+    val tasks =
+      getActiveCustomTasks()
+        .map { it.task }
+        .filter { it.id == BuiltInTaskId.LLM_AGENT_CHAT }
 
     val categoryMap: Map<String, CategoryInfo> =
       tasks.associateBy { it.category.id }.mapValues { it.value.category }

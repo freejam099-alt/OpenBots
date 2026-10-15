@@ -196,6 +196,10 @@ data class Model(
   val isLiteRtLm: Boolean
     get() = backendSpec.isLiteRtLm
 
+  /** Indicates whether the runtime type is the Wiki cloud runtime. */
+  val isCloud: Boolean
+    get() = backendSpec.runtimeType == RuntimeType.CLOUD
+
   /** Whether this model is downloaded as a local file via [DownloadRepository]. */
   val downloadsViaRepository: Boolean
     get() = backendSpec.downloadsViaRepository

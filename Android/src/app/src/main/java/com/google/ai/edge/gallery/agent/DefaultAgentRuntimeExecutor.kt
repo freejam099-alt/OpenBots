@@ -106,6 +106,14 @@ open class DefaultAgentRuntimeExecutor(
     val wasModelInitialized =
       config.model.initStatusFlow.value is Model.InitializationStatus.Initialized
 
+    // Wiki cloud: tidak ada engine lokal. Cukup tandai model siap dan lanjut.
+    if (config.model.isCloud) {
+      config.model.instance = com.google.ai.edge.gallery.data.cloud.WikiCloudInstance
+      llmSessionManager.setSessionConfig(sessionId = effectiveSessionId, config = sessionConfig)
+      onDone("")
+      return
+    }
+
     config.model.runtimeHelper.initialize(
       context = context,
       model = config.model,
@@ -282,6 +290,21 @@ open class DefaultAgentRuntimeExecutor(
       tools = toolsProvider.getAvailableTools(),
       context = executionContext,
     )
+
+    // Wiki cloud: tidak ada engine lokal; cukup set ulang system prompt + sesi.
+    if (config.model.isCloud) {
+      config.model.runtimeHelper.resetConversation(
+        model = config.model,
+        supportImage = config.supportImage,
+        supportAudio = config.supportAudio,
+        systemInstruction = effectiveSystemInstruction,
+        tools = listOf(),
+        enableConversationConstrainedDecoding = false,
+        initialMessages = config.initialMessages,
+      )
+      llmSessionManager.setSessionConfig(sessionId = effectiveSessionId, config = sessionConfig)
+      return
+    }
 
     llmSessionManager.resetSession(
       sessionId = effectiveSessionId,

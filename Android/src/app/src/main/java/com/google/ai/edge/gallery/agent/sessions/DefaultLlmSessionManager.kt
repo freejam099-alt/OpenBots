@@ -365,7 +365,7 @@ constructor(
     force: Boolean,
   ): Boolean =
     withContext(ioDispatcher) {
-      if (!Config.isContextCompactEnabled() || model.isAiCore) {
+      if (!Config.isContextCompactEnabled() || model.isAiCore || model.isCloud) {
         return@withContext false
       }
       if (!force) {
@@ -383,7 +383,7 @@ constructor(
     }
 
   override fun isTokenLimitReached(sessionId: String, model: Model): Boolean {
-    if (!Config.isContextCompactEnabled() || model.isAiCore) {
+    if (!Config.isContextCompactEnabled() || model.isAiCore || model.isCloud) {
       return false
     }
     val compactor = contextCompactor ?: return false

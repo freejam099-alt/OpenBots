@@ -69,6 +69,15 @@ enum class RuntimeType(
     supportsDelete = false,
   ),
 
+  /** Wiki: runtime cloud OpenAI-compatible, tanpa unduhan model lokal. */
+  @SerializedName("cloud")
+  CLOUD(
+    downloadsViaRepository = false,
+    autoDownloadsOnStartup = false,
+    supportsTopLevelDownload = false,
+    supportsDelete = false,
+  ),
+
 }
 
 enum class AICoreModelReleaseStage {

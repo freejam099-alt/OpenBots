@@ -102,7 +102,7 @@ open class LlmChatViewModelBase(
    * session lifecycle, updating [liveMetrics] as snapshots are emitted.
    */
   override fun observeLiveMetrics(model: Model) {
-    if (model.isAiCore) {
+    if (model.isAiCore || model.isCloud) {
       observedLiveMetricsModel = model
       liveMetricsJob?.cancel()
       _liveMetrics.value = null

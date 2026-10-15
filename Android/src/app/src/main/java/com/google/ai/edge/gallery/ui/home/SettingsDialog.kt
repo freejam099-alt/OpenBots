@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -41,9 +42,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +53,7 @@ import androidx.compose.material3.MultiChoiceSegmentedButtonRow
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -75,7 +77,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.google.ai.edge.gallery.BuildConfig
 import com.google.ai.edge.gallery.R
 import com.google.ai.edge.gallery.proto.Theme
@@ -114,38 +115,37 @@ fun SettingsDialog(
   val interactionSource = remember { MutableInteractionSource() }
   var showTos by remember { mutableStateOf(false) }
 
-  Dialog(onDismissRequest = onDismissed) {
+  // Wiki: Material container full-screen, bukan popup ala Meta AI.
+  Surface(
+    modifier = Modifier.fillMaxSize(),
+    color = MaterialTheme.colorScheme.surfaceContainerLow,
+  ) {
     val focusManager = LocalFocusManager.current
-    Card(
+    Column(
       modifier =
-        Modifier.fillMaxWidth().clickable(
+        Modifier.fillMaxSize().clickable(
           interactionSource = interactionSource,
           indication = null, // Disable the ripple effect
         ) {
           focusManager.clearFocus()
         },
-      shape = RoundedCornerShape(16.dp),
     ) {
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        IconButton(onClick = onDismissed) {
+          Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
+        }
+        Text(
+          stringResource(R.string.drawer_settings_label),
+          style = MaterialTheme.typography.titleLarge,
+        )
+      }
       Column(
-        modifier = Modifier.padding(20.dp),
+        modifier = Modifier.weight(1f).padding(horizontal = 20.dp).padding(bottom = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
       ) {
-        // Dialog title and subtitle.
-        Column {
-          Text(
-            stringResource(R.string.drawer_settings_label),
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(bottom = 8.dp),
-          )
-          // Subtitle.
-          Text(
-            "App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-            style = labelSmallNarrow,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.offset(y = (-6).dp),
-          )
-        }
-
         Column(
           modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f, fill = false),
           verticalArrangement = Arrangement.spacedBy(16.dp),

@@ -45,3 +45,48 @@ object WikiProviders {
     WikiProviderConfig(WikiProviderId.CUSTOM, "https://api.openai.com/v1"),
   )
 }
+
+/**
+ * Wiki cloud runtime: memegang konfigurasi provider aktif (in-memory) yang dipakai oleh
+ * [com.google.ai.edge.gallery.runtime.cloud.WikiCloudLlmHelper] saat chat berjalan.
+ */
+object WikiCloudRuntime {
+  @Volatile var configs: List<WikiProviderConfig> = WikiProviders.defaults()
+  @Volatile var activeProviderId: WikiProviderId = WikiProviderId.OPEN_ROUTER
+
+  fun activeConfig(): WikiProviderConfig? =
+    configs.find { it.id == activeProviderId } ?: configs.firstOrNull()
+
+  fun update(cfg: WikiProviderConfig) {
+    configs = configs.map { if (it.id == cfg.id) cfg else it }
+  }
+
+  fun select(id: WikiProviderId) {
+    activeProviderId = id
+  }
+}
+
+/** Penanda instance untuk model cloud (bukan engine lokal). */
+object WikiCloudInstance
+
+/** Nama model cloud khusus Wiki. */
+const val WIKI_CLOUD_MODEL_NAME = "WikiCloud"
+
+/**
+ * Membuat model cloud Wiki (OpenAI SDK compatible). Tidak diunduh, tidak butuh native engine.
+ */
+fun createWikiCloudModel(): com.google.ai.edge.gallery.data.Model =
+  com.google.ai.edge.gallery.data.Model(
+    name = WIKI_CLOUD_MODEL_NAME,
+    displayName = "Wiki Cloud",
+    info = "Cloud chat via provider OpenAI-compatible: OpenRouter, Groq, Gemini, DeepSeek, MiniMax, Custom.",
+    backendSpec =
+      com.google.ai.edge.gallery.data.BackendSpec(
+        runtimeType = com.google.ai.edge.gallery.data.RuntimeType.CLOUD,
+        accelerators = listOf(com.google.ai.edge.gallery.data.Accelerator.CPU),
+      ),
+    llmProfile = com.google.ai.edge.gallery.data.LlmProfile(maxTokens = 8192),
+    bestForTaskIds =
+      listOf(com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_AGENT_CHAT),
+  )
+

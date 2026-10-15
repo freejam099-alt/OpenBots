@@ -38,13 +38,111 @@ data class WikiChatRequest(
   val temperature: Double = 0.7,
 )
 
-class WikiCloudLlmHelper(
-  private var configProvider: () -> WikiProviderConfig?
+/**
+ * Wiki cloud runtime singleton, dipakai melalui `Model.runtimeHelper`.
+ *
+ * Menyimpan system prompt (dari Agent Skills: skills + MCP + system instruction) dan meneruskannya
+ * sebagai pesan `system` pada setiap request OpenAI-compatible.
+ */
+object WikiCloudLlmHelper : LlmModelHelper {
+  private val impl = WikiCloudLlmHelperImpl()
+
+  @Volatile private var systemPrompt: String = ""
+
+  fun setSystemPrompt(prompt: String) {
+    systemPrompt = prompt
+  }
+
+  fun getSystemPrompt(): String = systemPrompt
+
+  override fun initialize(
+    context: Context,
+    model: Model,
+    taskId: String,
+    supportImage: Boolean,
+    supportAudio: Boolean,
+    onDone: (String) -> Unit,
+    systemInstruction: Contents?,
+    tools: List<ToolProvider>,
+    enableConversationConstrainedDecoding: Boolean,
+    initialMessages: List<Message>,
+    coroutineScope: CoroutineScope?,
+    enableResponseFormat: Boolean,
+  ) {
+    systemInstruction?.toString()?.let { if (it.isNotBlank()) setSystemPrompt(it) }
+    onDone("")
+  }
+
+  override fun resetConversation(
+    model: Model,
+    supportImage: Boolean,
+    supportAudio: Boolean,
+    systemInstruction: Contents?,
+    tools: List<ToolProvider>,
+    enableConversationConstrainedDecoding: Boolean,
+    initialMessages: List<Message>,
+    enableResponseFormat: Boolean,
+  ) {
+    systemInstruction?.toString()?.let { if (it.isNotBlank()) setSystemPrompt(it) }
+    impl.resetConversation(
+      model = model,
+      supportImage = supportImage,
+      supportAudio = supportAudio,
+      systemInstruction = systemInstruction,
+      tools = tools,
+      enableConversationConstrainedDecoding = enableConversationConstrainedDecoding,
+      initialMessages = initialMessages,
+      enableResponseFormat = enableResponseFormat,
+    )
+  }
+
+  override fun cleanUp(model: Model, onDone: () -> Unit) = impl.cleanUp(model, onDone)
+
+  override fun stopResponse(model: Model) = impl.stopResponse(model)
+
+  override fun runInference(
+    model: Model,
+    input: String,
+    resultListener: ResultListener,
+    cleanUpListener: CleanUpListener,
+    onError: (message: String) -> Unit,
+    images: List<Bitmap>,
+    audioClips: List<ByteArray>,
+    coroutineScope: CoroutineScope?,
+    extraContext: Map<String, String>,
+    responseJsonSchema: String?,
+  ) {
+    impl.setSystemPrompt(systemPrompt)
+    impl.runInference(
+      model = model,
+      input = input,
+      resultListener = resultListener,
+      cleanUpListener = cleanUpListener,
+      onError = onError,
+      images = images,
+      audioClips = audioClips,
+      coroutineScope = coroutineScope,
+      extraContext = extraContext,
+      responseJsonSchema = responseJsonSchema,
+    )
+  }
+
+  suspend fun fetchModels(cfg: WikiProviderConfig): List<String> = impl.fetchModels(cfg)
+}
+
+class WikiCloudLlmHelperImpl(
+  private var configProvider: () -> WikiProviderConfig? = { WikiCloudRuntime.activeConfig() }
 ) : LlmModelHelper {
   private val history = mutableListOf<WikiChatMessage>()
   private var job: Job? = null
   @Volatile private var activeConn: HttpURLConnection? = null
+  @Volatile private var systemPrompt: String = ""
   private val json = Json { ignoreUnknownKeys = true }
+
+  /** System prompt yang dipakai sebagai pesan `system` (dari Agent Skills: skills + MCP). */
+  fun setSystemPrompt(prompt: String) {
+    systemPrompt = prompt
+  }
 
   override fun initialize(
     context: Context,
@@ -115,7 +213,12 @@ class WikiCloudLlmHelper(
           return@launch
         }
         history.add(WikiChatMessage("user", input))
-        val req = WikiChatRequest(model = cfg.modelId, messages = history.toList(), stream = cfg.streaming)
+        val msgs =
+          buildList {
+            if (systemPrompt.isNotBlank()) add(WikiChatMessage("system", systemPrompt))
+            addAll(history)
+          }
+        val req = WikiChatRequest(model = cfg.modelId, messages = msgs, stream = cfg.streaming)
         val body = json.encodeToString(WikiChatRequest.serializer(), req)
         val url = URL(cfg.baseUrl.trimEnd('/') + "/chat/completions")
         val conn = (url.openConnection() as HttpURLConnection).apply {

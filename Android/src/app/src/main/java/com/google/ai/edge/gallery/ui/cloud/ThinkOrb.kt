@@ -25,13 +25,13 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 @Composable
-fun ThinkOrb(modifier: Modifier = Modifier, orbCount: Int = 5) {
+fun ThinkOrb(modifier: Modifier = Modifier, orbCount: Int = 5, diameter: androidx.compose.ui.unit.Dp = 56.dp) {
   val c1 = MaterialTheme.colorScheme.primary
   val c2 = MaterialTheme.colorScheme.tertiary
   val transition = rememberInfiniteTransition(label = "wiki_orb")
   val t by transition.animateFloat(0f, 6.2831f, infiniteRepeatable(tween(2600, easing = LinearEasing), RepeatMode.Restart), label = "t")
   val seeds = remember(orbCount) { List(orbCount) { i -> i * 1.37f } }
-  Canvas(modifier.size(56.dp)) {
+  Canvas(modifier.size(diameter)) {
     val cx = size.width / 2f
     val cy = size.height / 2f
     val r = size.minDimension / 3.2f

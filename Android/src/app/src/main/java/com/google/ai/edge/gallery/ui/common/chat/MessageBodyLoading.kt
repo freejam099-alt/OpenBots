@@ -70,7 +70,7 @@ fun MessageBodyLoading(message: ChatMessageLoading? = null) {
     modifier = Modifier.fillMaxWidth(),
   ) {
     // Wiki Think Orb: streaming indicator fisika + loader bawaan.
-    ThinkOrb()
+    ThinkOrb(diameter = 28.dp)
     RotationalLoader(size = 24.dp)
 
     if (message?.extraProgressLabel?.isNotEmpty() == true) {

@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
@@ -91,8 +91,9 @@ fun WikiSettingsContainer(
   var loadingId by remember { mutableStateOf<String?>(null) }
   var cache by remember { mutableStateOf(mapOf<String, List<String>>()) }
   val scope = rememberCoroutineScope()
-  LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-    items(configs, key = { it.id.name }) { cfg ->
+  // Column (bukan Lazy) agar aman di dalam SettingsDialog yang sudah scrollable.
+  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    configs.forEach { cfg ->
       WikiProviderGenCard(
         config = cfg,
         models = cache[cfg.id.name].orEmpty(),

@@ -32,7 +32,7 @@
   <string name="image_limit_ignored_message" translatable="true" description="Toast message indicating some images were ignored due to limit. [CHAR_LIMIT=110]">Some images have been ignored due to limit.</string>
   <string name="aichat_initializing_title" translatable="true" description="Status indicator when initializing model. [CHAR_LIMIT=31]">Initializing model</string>
   <string name="aichat_initializing_content" translatable="true" description="Loading message shown while a chat or translator session is initializing. [CHAR_LIMIT=110]">Sit tight, this can take up to 1 minute</string>
-  <string name="app_intro" translatable="true" description="Introduction text shown on the home screen. [CHAR_LIMIT=90]">Explore a world of amazing on-device models from</string>
+  <string name="app_intro" translatable="true" description="Introduction text shown on the home screen. [CHAR_LIMIT=90]">Wiki cloud chatbot — Agent Skills sebagai utama</string>
   <string name="app_name" translatable="false">Wiki</string>
   <string name="app_name_first_part" translatable="false">Wiki</string>
   <string name="app_name_second_part" translatable="false"></string>

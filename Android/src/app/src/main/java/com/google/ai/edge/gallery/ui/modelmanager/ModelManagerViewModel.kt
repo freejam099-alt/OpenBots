@@ -201,10 +201,11 @@ private val RESET_CONVERSATION_TURN_COUNT_CONFIG =
   )
 private val PREDEFINED_LLM_TASK_ORDER =
   listOf(
+    // Wiki: Agent Skills sebagai chat utama.
+    BuiltInTaskId.LLM_AGENT_CHAT,
+    BuiltInTaskId.LLM_CHAT,
     BuiltInTaskId.SMART_ALBUM,
     BuiltInTaskId.VIDEO_MOMENT_FINDER,
-    BuiltInTaskId.LLM_CHAT,
-    BuiltInTaskId.LLM_AGENT_CHAT,
     BuiltInTaskId.LLM_ASK_IMAGE,
     BuiltInTaskId.LLM_ASK_AUDIO,
     BuiltInTaskId.LLM_PROMPT_LAB,

@@ -150,6 +150,14 @@ fun SettingsDialog(
           modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f, fill = false),
           verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+          // Wiki container: cloud providers (OpenRouter/Groq/Gemini/DeepSeek/MiniMax/Custom).
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+              "Wiki Cloud",
+              style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
+            )
+            com.google.ai.edge.gallery.ui.cloud.WikiSettingsContainer()
+          }
           val context = LocalContext.current
           // Theme switcher.
           Column(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {

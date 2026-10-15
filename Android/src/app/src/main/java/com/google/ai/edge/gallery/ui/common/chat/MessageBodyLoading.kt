@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.google.ai.edge.gallery.ui.common.RotationalLoader
+import com.google.ai.edge.gallery.ui.cloud.ThinkOrb
 
 /** Composable function to display a loading indicator. */
 @Composable
@@ -68,6 +69,8 @@ fun MessageBodyLoading(message: ChatMessageLoading? = null) {
     verticalAlignment = Alignment.CenterVertically,
     modifier = Modifier.fillMaxWidth(),
   ) {
+    // Wiki Think Orb: streaming indicator fisika + loader bawaan.
+    ThinkOrb()
     RotationalLoader(size = 24.dp)
 
     if (message?.extraProgressLabel?.isNotEmpty() == true) {

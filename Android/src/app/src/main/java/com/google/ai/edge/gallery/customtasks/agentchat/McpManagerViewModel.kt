@@ -92,7 +92,25 @@ constructor(
     withContext(Dispatchers.IO) {
       try {
         // 2. Retrieve the list of configured MCP servers previously saved in DataStore.
-        val savedServers = mcpServersDataStore.data.first().mcpServerList
+        // Wiki default: seed Wiki Maps MCP bila kosong (MCP bawaan Agent Skills).
+        var savedServers = mcpServersDataStore.data.first().mcpServerList
+        if (savedServers.isEmpty()) {
+          val wikiDefault =
+            com.google.ai.edge.gallery.proto.McpServer.newBuilder()
+              .setUrl(com.google.ai.edge.gallery.data.cloud.WikiProviders.WIKI_DEFAULT_MCP_URL)
+              .setName(com.google.ai.edge.gallery.data.cloud.WikiProviders.WIKI_DEFAULT_MCP_NAME)
+              .setDescription("Wiki default MCP")
+              .setEnabled(true)
+              .build()
+          try {
+            mcpServersDataStore.updateData {
+              com.google.ai.edge.gallery.proto.McpServers.newBuilder()
+                .addAllMcpServer(listOf(wikiDefault))
+                .build()
+            }
+            savedServers = listOf(wikiDefault)
+          } catch (_: Exception) { /* tetap lanjut daftar kosong */ }
+        }
         val loadedStates = savedServers.map { serverProto ->
           try {
             // Map existing tool enablement configurations to preserve user preferences upon

@@ -6,10 +6,7 @@
       branches: [ "main" ]
       paths:
         - 'Android/**'
-    pull_request:
-      branches: [ "main" ]
-      paths:
-        - 'Android/**'
+        - '.github/workflows/build_android.yaml'
   
   jobs:
     build_apk:
@@ -29,5 +26,13 @@
           run: echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-37.0"
         - name: Build
           run: ./gradlew assembleRelease
+        - name: List APKs
+          run: ls -lh app/build/outputs/apk/release/ || find . -name "*.apk" -maxdepth 6
+        - name: Upload APK artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: Wiki-release-apk
+            path: Android/src/app/build/outputs/apk/release/*.apk
+            if-no-files-found: error
   
   

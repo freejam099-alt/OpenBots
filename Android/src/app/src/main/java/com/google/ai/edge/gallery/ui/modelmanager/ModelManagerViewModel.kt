@@ -1293,14 +1293,12 @@ constructor(
       val curTasks = getActiveCustomTasks().map { it.task }
       processTasks()
       _uiState.update {
-        it.copy(
-          createUiState()
-            .copy(
-              loadingModelAllowlist = false,
-              tasks = curTasks,
-              tasksByCategory = groupTasksByCategory(),
-            )
-        )
+        createUiState()
+          .copy(
+            loadingModelAllowlist = false,
+            tasks = curTasks,
+            tasksByCategory = groupTasksByCategory(),
+          )
       }
     }
   }

@@ -80,7 +80,9 @@ fun WikiSettingsContainer(modifier: Modifier = Modifier) {
   var drafts by remember(runtimeVersion) {
     mutableStateOf(WikiCloudRuntime.configs.associateBy { it.id })
   }
-  var expandedId by remember(runtimeVersion) { mutableStateOf(WikiCloudRuntime.activeProviderId) }
+  var expandedId by remember(runtimeVersion) {
+    mutableStateOf<WikiProviderId?>(WikiCloudRuntime.activeProviderId)
+  }
   var fetchingId by remember { mutableStateOf<WikiProviderId?>(null) }
   var fetchErrors by remember { mutableStateOf(mapOf<WikiProviderId, String>()) }
   var fetchedModels by remember { mutableStateOf(mapOf<WikiProviderId, List<String>>()) }

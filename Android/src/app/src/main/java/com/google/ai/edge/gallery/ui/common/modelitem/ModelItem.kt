@@ -225,8 +225,11 @@ fun ModelItem(
           }
         }
       }
-      SharedTransitionLayout {
-        // Show a single download panel if there are no variants.
+      if (model.isCloud) {
+        WikiCloudModelPanel(model = model, onAction = { onModelClicked(model) })
+      } else
+        SharedTransitionLayout {
+          // Show a single download panel if there are no variants.
         if (modelVariants.isEmpty()) {
           val hasDownloadPanelContent =
             (downloadStatus?.status != ModelDownloadStatusType.SUCCEEDED &&

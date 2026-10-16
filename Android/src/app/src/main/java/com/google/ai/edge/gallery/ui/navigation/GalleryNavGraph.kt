@@ -71,6 +71,7 @@ import com.google.ai.edge.gallery.customtasks.common.CustomTaskDataForBuiltinTas
 import com.google.ai.edge.gallery.data.Model
 import com.google.ai.edge.gallery.data.ModelDownloadStatusType
 import com.google.ai.edge.gallery.data.Task
+import com.google.ai.edge.gallery.data.cloud.WikiCloudRuntime
 import com.google.ai.edge.gallery.data.isLegacyTasks
 import com.google.ai.edge.gallery.firebaseAnalytics
 import com.google.ai.edge.gallery.ui.benchmark.BenchmarkScreen
@@ -78,6 +79,7 @@ import com.google.ai.edge.gallery.ui.common.ErrorDialog
 import com.google.ai.edge.gallery.ui.common.LocalTestAllowlistDialog
 import com.google.ai.edge.gallery.ui.common.ModelPageAppBar
 import com.google.ai.edge.gallery.ui.common.chat.ModelDownloadStatusInfoPanel
+import com.google.ai.edge.gallery.ui.cloud.WikiCloudScreen
 import com.google.ai.edge.gallery.ui.common.tos.TosViewModel
 import com.google.ai.edge.gallery.ui.home.HomeScreen
 import com.google.ai.edge.gallery.ui.modelmanager.GlobalModelManager
@@ -96,6 +98,7 @@ private const val ROUTE_BENCHMARK = "benchmark"
 private const val ROUTE_MODEL_MANAGER = "model_manager"
 private const val ARG_IMPORT_URL = "import_url"
 private const val ROUTE_NOTIFICATIONS = "notifications"
+private const val ROUTE_CLOUD = "wiki_cloud"
 private const val ENTER_ANIMATION_DURATION_MS = 500
 private val ENTER_ANIMATION_EASING = EaseOutExpo
 private const val ENTER_ANIMATION_DELAY_MS = 100
@@ -203,6 +206,7 @@ fun GalleryNavHost(
         },
         onModelsClicked = { navController.navigate(ROUTE_MODEL_MANAGER) },
         onNotificationsClicked = { navController.navigate(ROUTE_NOTIFICATIONS) },
+        onCloudClicked = { navController.navigate(ROUTE_CLOUD) },
         modifier = modifier,
       )
     }
@@ -231,8 +235,13 @@ fun GalleryNavHost(
           task = it,
           enableAnimation = enableModelListAnimation,
           onModelClicked = { model ->
-            modelManagerViewModel.selectModel(model)
-            navController.navigate("$ROUTE_MODEL/${it.id}/${model.name}")
+            if (model.isCloud && !WikiCloudRuntime.isConfigured()) {
+              // Wiki: model cloud belum diatur — buka pengaturan Cloud dulu.
+              navController.navigate(ROUTE_CLOUD)
+            } else {
+              modelManagerViewModel.selectModel(model)
+              navController.navigate("$ROUTE_MODEL/${it.id}/${model.name}")
+            }
           },
           onBenchmarkClicked = { model ->
             firebaseAnalytics?.logEvent(
@@ -303,6 +312,7 @@ fun GalleryNavHost(
               disableAppBarControls = disableAppBarControls,
               hideTopBar = hideTopBar,
               useThemeColor = customTask.task.useThemeColor,
+              onCloudSettingsClicked = { navController.navigate(ROUTE_CLOUD) },
               onNavigateUp = {
                 if (customNavigateUpCallback != null) {
                   customNavigateUpCallback?.invoke()
@@ -419,6 +429,15 @@ fun GalleryNavHost(
       NotificationsScreen(navigateUp = { navController.navigateUp() })
     }
 
+    // Wiki cloud settings page.
+    composable(
+      route = ROUTE_CLOUD,
+      enterTransition = { slideEnter() },
+      exitTransition = { slideExit() },
+    ) {
+      WikiCloudScreen(onNavigateUp = { navController.navigateUp() })
+    }
+
     // Benchmark creation page.
     composable(
       route = "$ROUTE_BENCHMARK/{modelName}",
@@ -520,6 +539,7 @@ private fun CustomTaskScreen(
   hideTopBar: Boolean,
   useThemeColor: Boolean,
   onNavigateUp: () -> Unit,
+  onCloudSettingsClicked: (() -> Unit)? = null,
   allowEditingSystemPrompt: Boolean = false,
   curSystemPrompt: String = "",
   defaultSystemPrompt: String = task.defaultSystemPrompt,
@@ -586,6 +606,7 @@ private fun CustomTaskScreen(
           modelPreparing = disableAppBarControls,
           shouldShowHistoryButton = onHistoryClicked != null,
           onHistoryClicked = { onHistoryClicked?.invoke() },
+          onCloudSettingsClicked = onCloudSettingsClicked,
           useThemeColor = useThemeColor,
           modifier =
             Modifier.onGloballyPositioned { coordinates -> appBarHeight = coordinates.size.height },

@@ -163,6 +163,7 @@ fun HomeScreen(
   navigateToTaskScreen: (Task) -> Unit,
   onModelsClicked: () -> Unit,
   onNotificationsClicked: () -> Unit,
+  onCloudClicked: () -> Unit,
   enableAnimation: Boolean,
   modifier: Modifier = Modifier,
 ) {
@@ -304,11 +305,11 @@ fun HomeScreen(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 SquareDrawerItem(
-                  label = stringResource(R.string.drawer_settings_description),
-                  description = stringResource(R.string.drawer_settings_label),
+                  label = "Cloud",
+                  description = "Provider & model AI",
                   icon = Icons.Rounded.Cloud,
                   onClick = {
-                    showSettingsDialog = true
+                    onCloudClicked()
                     scope.launch { drawerState.close() }
                   },
                   modifier = Modifier.weight(1f),
@@ -494,6 +495,10 @@ fun HomeScreen(
       curFirebaseAnalytics = modelManagerViewModel.readFirebaseAnalytics(),
       modelManagerViewModel = modelManagerViewModel,
       onDismissed = { showSettingsDialog = false },
+      onCloudSettingsClicked = {
+        showSettingsDialog = false
+        onCloudClicked()
+      },
     )
   }
 

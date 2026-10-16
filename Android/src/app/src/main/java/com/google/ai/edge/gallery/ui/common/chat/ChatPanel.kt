@@ -162,7 +162,8 @@ fun ChatPanel(
   val messages = uiState.messagesByModel[selectedModel.name] ?: listOf()
   val modelInitStatus by selectedModel.initStatusFlow.collectAsState()
   val isLiveMetricsFlagEnabled = false
-  val isLiveMetricsSupported = isLiveMetricsFlagEnabled && !selectedModel.isAiCore
+  val isLiveMetricsSupported =
+    isLiveMetricsFlagEnabled && !selectedModel.isAiCore && !selectedModel.isCloud
   val hasLiveMetrics by
     remember(viewModel, selectedModel.name, isLiveMetricsSupported) {
         if (isLiveMetricsSupported) {

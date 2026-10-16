@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -92,6 +93,7 @@ fun ModelPageAppBar(
   shouldShowHistoryButton: Boolean = false,
   onHistoryClicked: (Model) -> Unit = {},
   isAutoCompactEnabled: Boolean = false,
+  onCloudSettingsClicked: (() -> Unit)? = null,
 ) {
   var showConfigDialog by remember { mutableStateOf(false) }
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsStateWithLifecycle()
@@ -148,6 +150,17 @@ fun ModelPageAppBar(
     },
     // The config button for the model (if existed).
     actions = {
+      // Wiki: pintasan pengaturan cloud untuk model cloud.
+      if (model.isCloud && onCloudSettingsClicked != null) {
+        IconButton(onClick = onCloudSettingsClicked) {
+          Icon(
+            imageVector = Icons.Rounded.Cloud,
+            contentDescription = "Pengaturan Cloud",
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(20.dp),
+          )
+        }
+      }
       val downloadSucceeded = curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED
       val showConfigButton = model.configs.isNotEmpty() && downloadSucceeded
       Box(modifier = Modifier.size(42.dp), contentAlignment = Alignment.Center) {

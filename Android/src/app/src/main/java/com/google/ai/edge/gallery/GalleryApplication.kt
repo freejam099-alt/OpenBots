@@ -18,6 +18,7 @@ package com.google.ai.edge.gallery
 
 import android.app.Application
 import com.google.ai.edge.gallery.data.DataStoreRepository
+import com.google.ai.edge.gallery.data.cloud.WikiCloudRuntime
 import com.google.ai.edge.gallery.notifications.NotificationScheduleManager
 import com.google.ai.edge.gallery.ui.theme.ThemeSettings
 import com.google.firebase.FirebaseApp
@@ -34,6 +35,8 @@ class GalleryApplication : Application() {
     super.onCreate()
     // Wiki: catat crash ke file agar penyebabnya bisa diperiksa lewat pengelola file.
     WikiCrashLogger.install(this)
+    // Wiki: muat pengaturan provider cloud (API key, model hasil Fetch) yang tersimpan.
+    WikiCloudRuntime.load(this)
     // Initialize the notification schedule manager to load the scheduled notifications from the
     // disk.
     notificationScheduleManager.initialize()

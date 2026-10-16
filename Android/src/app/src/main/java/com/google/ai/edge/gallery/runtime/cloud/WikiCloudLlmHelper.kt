@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import com.google.ai.edge.gallery.data.Model
 import com.google.ai.edge.gallery.data.cloud.WikiCloudRuntime
 import com.google.ai.edge.gallery.data.cloud.WikiProviderConfig
+import com.google.ai.edge.gallery.data.cloud.WikiProviderId
 import com.google.ai.edge.gallery.runtime.CleanUpListener
 import com.google.ai.edge.gallery.runtime.LlmModelHelper
 import com.google.ai.edge.gallery.runtime.ResultListener
@@ -128,7 +129,7 @@ object WikiCloudLlmHelper : LlmModelHelper {
     )
   }
 
-  suspend fun fetchModels(cfg: WikiProviderConfig): List<String> = impl.fetchModels(cfg)
+  suspend fun fetchModels(cfg: WikiProviderConfig): Result<List<String>> = impl.fetchModels(cfg)
 }
 
 class WikiCloudLlmHelperImpl(
@@ -293,21 +294,58 @@ class WikiCloudLlmHelperImpl(
     }
   }
 
-  /** Fetch model list: GET {baseUrl}/models -> List<String>. OpenAI SDK compatible. */
-  suspend fun fetchModels(cfg: WikiProviderConfig): List<String> = withContext(Dispatchers.IO) {
-    if (cfg.apiKey.isBlank()) return@withContext emptyList()
-    val url = URL(cfg.baseUrl.trimEnd('/') + "/models")
-    val conn = (url.openConnection() as HttpURLConnection).apply {
-      requestMethod = "GET"
-      connectTimeout = 15_000
-      readTimeout = 30_000
-      setRequestProperty("Authorization", "Bearer ${cfg.apiKey}")
+  /**
+   * Fetch model list. OpenAI-compatible: GET {baseUrl}/models.
+   *
+   * Khusus Gemini memakai endpoint native /v1beta/models karena daftar model lewat basis
+   * OpenAI-compat tidak selalu tersedia.
+   */
+  suspend fun fetchModels(cfg: WikiProviderConfig): Result<List<String>> =
+    withContext(Dispatchers.IO) {
+      try {
+        val base = cfg.baseUrl.trim().trimEnd('/')
+        val geminiNative = cfg.id == WikiProviderId.GEMINI && cfg.apiKey.isNotBlank()
+        val url =
+          if (geminiNative) {
+            URL("https://generativelanguage.googleapis.com/v1beta/models?key=${cfg.apiKey}")
+          } else {
+            URL("$base/models")
+          }
+        val conn =
+          (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 15_000
+            readTimeout = 30_000
+            setRequestProperty("Accept", "application/json")
+            if (!geminiNative && cfg.apiKey.isNotBlank()) {
+              setRequestProperty("Authorization", "Bearer ${cfg.apiKey}")
+            }
+          }
+        val code = conn.responseCode
+        if (code !in 200..299) {
+          val err = conn.errorStream?.bufferedReader()?.readText()?.take(260)?.trim().orEmpty()
+          return@withContext Result.failure(RuntimeException("HTTP $code ${err}".trim()))
+        }
+        val text = conn.inputStream.bufferedReader().readText()
+        val root = json.parseToJsonElement(text).jsonObject
+        val ids = mutableListOf<String>()
+        root["data"]?.jsonArray?.forEach { el ->
+          el.jsonObject["id"]?.jsonPrimitive?.content?.let { if (it.isNotBlank()) ids.add(it) }
+        }
+        if (ids.isEmpty()) {
+          // Gemini native: { "models": [{ "name": "models/gemini-2.5-flash" }] }
+          root["models"]?.jsonArray?.forEach { el ->
+            el.jsonObject["name"]?.jsonPrimitive?.content?.let { name ->
+              val id = name.removePrefix("models/")
+              if (id.isNotBlank() && !id.contains("embedding") && !id.contains("aqa")) {
+                ids.add(id)
+              }
+            }
+          }
+        }
+        Result.success(ids.distinct().sorted())
+      } catch (e: Exception) {
+        Result.failure(e)
+      }
     }
-    if (conn.responseCode !in 200..299) return@withContext emptyList()
-    val text = conn.inputStream.bufferedReader().readText()
-    try {
-      val arr = json.parseToJsonElement(text).jsonObject["data"]?.jsonArray ?: return@withContext emptyList()
-      arr.mapNotNull { it.jsonObject["id"]?.jsonPrimitive?.content }
-    } catch (_: Exception) { emptyList() }
-  }
 }

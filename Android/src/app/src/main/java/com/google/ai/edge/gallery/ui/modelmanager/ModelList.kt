@@ -112,7 +112,8 @@ fun ModelList(
       derivedStateOf {
         val trigger = task.updateTrigger.value
         if (trigger >= 0) {
-          task.models.toList().filter { it.downloadInfo.imported }
+          // Wiki: model lokal yang diimpor tidak ditampilkan (cloud-only).
+          task.models.toList().filter { it.downloadInfo.imported && it.isCloud }
         } else {
           listOf()
         }

@@ -104,6 +104,9 @@ import net.openid.appauth.AuthorizationService
 import net.openid.appauth.ResponseTypeValues
 
 private const val TAG = "AGModelManagerViewModel"
+
+// Wiki: aplikasi cloud-only — model lokal tidak pernah dimuat/ditampilkan.
+private const val WIKI_CLOUD_ONLY = true
 private const val TEXT_INPUT_HISTORY_MAX_SIZE = 50
 private const val MODEL_ALLOWLIST_FILENAME = "model_allowlist.json"
 private const val ALLOWLIST_BASE_URL =
@@ -373,7 +376,10 @@ constructor(
         val existing = task.models.firstOrNull {
           it.name == com.google.ai.edge.gallery.data.cloud.WIKI_CLOUD_MODEL_NAME
         }
-        if (existing != null && _uiState.value.selectedModel.name.isEmpty()) {
+        if (
+          existing != null &&
+            _uiState.value.selectedModel.name == com.google.ai.edge.gallery.data.EMPTY_MODEL.name
+        ) {
           _uiState.update { it.copy(selectedModel = existing) }
         }
       }
@@ -1281,6 +1287,28 @@ constructor(
   fun loadModelAllowlist() {
     _uiState.update { it.copy(loadingModelAllowlist = true, loadingModelAllowlistError = "") }
 
+    // Wiki: cloud-only. Task dan model cloud disiapkan langsung tanpa mengunduh allowlist model
+    // lokal dari internet: app terbuka instan dan tidak ada model lokal yang tampil.
+    viewModelScope.launch {
+      val curTasks = getActiveCustomTasks().map { it.task }
+      processTasks()
+      _uiState.update {
+        it.copy(
+          createUiState()
+            .copy(
+              loadingModelAllowlist = false,
+              tasks = curTasks,
+              tasksByCategory = groupTasksByCategory(),
+            )
+        )
+      }
+    }
+  }
+
+  @Suppress("unused")
+  private fun loadModelAllowlistLegacy() {
+    _uiState.update { it.copy(loadingModelAllowlist = true, loadingModelAllowlistError = "") }
+
     viewModelScope.launch(allowlistLoadingDispatcher) {
       try {
         // Clear existing allowlist models.
@@ -1599,9 +1627,11 @@ constructor(
       // Create model.
       val model = createModelFromImportedModelInfo(info = importedModel)
 
-      // Add to task.
-      for (taskId in model.getTargetTaskIdsForImportedModel()) {
-        tasks.get(key = taskId)?.models?.add(model)
+      // Add to task (Wiki: cloud-only — model lokal yang diimpor tidak dimasukkan ke task).
+      if (!WIKI_CLOUD_ONLY) {
+        for (taskId in model.getTargetTaskIdsForImportedModel()) {
+          tasks.get(key = taskId)?.models?.add(model)
+        }
       }
 
       // Update status.

@@ -268,7 +268,7 @@ class WikiCloudLlmHelperImpl(
             }
           } else if (text.contains("data:")) {
             // Server mengirim SSE walau Content-Type tidak menyebutkannya.
-            consumeSseStream(StringReader(text), full, resultListener)
+            consumeSseStream(BufferedReader(StringReader(text)), full, resultListener)
           } else {
             rollbackLastUserMessage(input)
             withContext(Dispatchers.Main) { onError("Wiki cloud error: respons non-stream tak terbaca") }

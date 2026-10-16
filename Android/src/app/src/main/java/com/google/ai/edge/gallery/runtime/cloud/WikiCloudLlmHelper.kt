@@ -7,6 +7,7 @@ package com.google.ai.edge.gallery.runtime.cloud
 import android.content.Context
 import android.graphics.Bitmap
 import com.google.ai.edge.gallery.data.Model
+import com.google.ai.edge.gallery.data.cloud.WikiCloudRuntime
 import com.google.ai.edge.gallery.data.cloud.WikiProviderConfig
 import com.google.ai.edge.gallery.runtime.CleanUpListener
 import com.google.ai.edge.gallery.runtime.LlmModelHelper

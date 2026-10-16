@@ -136,12 +136,6 @@ dependencies {
   implementation(libs.mcp.kotlin.sdk)
   implementation(libs.ktor.client.android)
   implementation(libs.ktor.client.core)
-  implementation(libs.tasks.vision)
-  implementation(libs.tasks.retrieval)
-  implementation(libs.androidx.media3.exoplayer)
-  implementation(libs.androidx.media3.transformer)
-  implementation(libs.androidx.media3.ui)
-  implementation(libs.coil.compose)
 }
 
 configurations.all { resolutionStrategy.force("org.jetbrains.kotlin:kotlin-metadata-jvm:2.4.0") }

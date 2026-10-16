@@ -20,8 +20,6 @@ import androidx.datastore.core.DataStore
 import com.google.ai.edge.gallery.proto.AccessTokenData
 import com.google.ai.edge.gallery.proto.BenchmarkResult
 import com.google.ai.edge.gallery.proto.BenchmarkResults
-import com.google.ai.edge.gallery.proto.Cutout
-import com.google.ai.edge.gallery.proto.CutoutCollection
 import com.google.ai.edge.gallery.proto.ImportedModel
 import com.google.ai.edge.gallery.proto.Settings
 import com.google.ai.edge.gallery.proto.Skill
@@ -89,14 +87,6 @@ interface DataStoreRepository {
 
   fun setHasRunTinyGarden(hasRun: Boolean)
 
-  fun addCutout(cutout: Cutout)
-
-  fun getAllCutouts(): List<Cutout>
-
-  fun setCutout(newCutout: Cutout)
-
-  fun setCutouts(cutouts: List<Cutout>)
-
   fun setHasSeenBenchmarkComparisonHelp(seen: Boolean)
 
   fun getHasSeenBenchmarkComparisonHelp(): Boolean
@@ -141,7 +131,6 @@ interface DataStoreRepository {
 class DefaultDataStoreRepository(
   private val dataStore: DataStore<Settings>,
   private val userDataDataStore: DataStore<UserData>,
-  private val cutoutDataStore: DataStore<CutoutCollection>,
   private val benchmarkResultsDataStore: DataStore<BenchmarkResults>,
   private val skillsDataStore: DataStore<Skills>,
 ) : DataStoreRepository {
@@ -307,42 +296,6 @@ class DefaultDataStoreRepository(
   override fun setHasRunTinyGarden(hasRun: Boolean) {
     runBlocking {
       dataStore.updateData { settings -> settings.toBuilder().setHasRunTinyGarden(hasRun).build() }
-    }
-  }
-
-  override fun addCutout(cutout: Cutout) {
-    runBlocking {
-      cutoutDataStore.updateData { cutouts -> cutouts.toBuilder().addCutout(cutout).build() }
-    }
-  }
-
-  override fun getAllCutouts(): List<Cutout> {
-    return runBlocking { cutoutDataStore.data.first().cutoutList }
-  }
-
-  override fun setCutout(newCutout: Cutout) {
-    runBlocking {
-      cutoutDataStore.updateData { cutouts ->
-        var index = -1
-        for (i in 0..<cutouts.cutoutCount) {
-          val cutout = cutouts.cutoutList.get(i)
-          if (cutout.id == newCutout.id) {
-            index = i
-            break
-          }
-        }
-        if (index >= 0) {
-          cutouts.toBuilder().setCutout(index, newCutout).build()
-        } else {
-          cutouts
-        }
-      }
-    }
-  }
-
-  override fun setCutouts(cutouts: List<Cutout>) {
-    runBlocking {
-      cutoutDataStore.updateData { CutoutCollection.newBuilder().addAllCutout(cutouts).build() }
     }
   }
 

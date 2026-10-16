@@ -13,6 +13,9 @@ import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.google.ai.edge.gallery.data.BooleanSwitchConfig
+import com.google.ai.edge.gallery.data.ConfigKeys
+import com.google.ai.edge.gallery.data.createLlmChatConfigs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -176,10 +179,27 @@ fun createWikiCloudModel(): com.google.ai.edge.gallery.data.Model =
     name = WIKI_CLOUD_MODEL_NAME,
     displayName = "Wiki Cloud",
     info = "Cloud chat via provider OpenAI-compatible: OpenRouter, Groq, Gemini, DeepSeek, MiniMax, Custom.",
+    configs =
+      createLlmChatConfigs(
+          defaultMaxToken = 8192,
+          accelerators = listOf(com.google.ai.edge.gallery.data.Accelerator.CPU),
+          supportThinking = true,
+        )
+        .toMutableList()
+        .apply {
+          // CoT/thinking aktif secara default untuk chat cloud.
+          removeAll { it.key == ConfigKeys.ENABLE_THINKING }
+          add(BooleanSwitchConfig(key = ConfigKeys.ENABLE_THINKING, defaultValue = true))
+        },
     backendSpec =
       com.google.ai.edge.gallery.data.BackendSpec(
         runtimeType = com.google.ai.edge.gallery.data.RuntimeType.CLOUD,
         accelerators = listOf(com.google.ai.edge.gallery.data.Accelerator.CPU),
+      ),
+    capabilityToTaskTypes =
+      mapOf(
+        com.google.ai.edge.gallery.data.ModelCapability.LLM_THINKING to
+          listOf(com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_AGENT_CHAT)
       ),
     llmProfile = com.google.ai.edge.gallery.data.LlmProfile(maxTokens = 8192),
     bestForTaskIds =

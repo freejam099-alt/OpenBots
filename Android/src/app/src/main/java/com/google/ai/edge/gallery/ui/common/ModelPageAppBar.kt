@@ -25,8 +25,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -138,29 +138,28 @@ fun ModelPageAppBar(
       }
     },
     modifier = modifier,
-    // The back button.
+    // Tombol leading: untuk model cloud, tombol kembali diganti tombol pengaturan cloud.
     navigationIcon = {
-      val enableBackButton = !isModelInitializing && !inProgress
-      IconButton(onClick = onBackClicked, enabled = enableBackButton) {
-        Icon(
-          imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-          contentDescription = stringResource(R.string.cd_navigate_back_icon),
-        )
+      val enableButton = !isModelInitializing && !inProgress
+      if (model.isCloud && onCloudSettingsClicked != null) {
+        IconButton(onClick = onCloudSettingsClicked, enabled = enableButton) {
+          Icon(
+            imageVector = Icons.Rounded.Settings,
+            contentDescription = stringResource(R.string.cd_cloud_settings_icon),
+            modifier = Modifier.size(22.dp),
+          )
+        }
+      } else {
+        IconButton(onClick = onBackClicked, enabled = enableButton) {
+          Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = stringResource(R.string.cd_navigate_back_icon),
+          )
+        }
       }
     },
     // The config button for the model (if existed).
     actions = {
-      // Wiki: pintasan pengaturan cloud untuk model cloud.
-      if (model.isCloud && onCloudSettingsClicked != null) {
-        IconButton(onClick = onCloudSettingsClicked) {
-          Icon(
-            imageVector = Icons.Rounded.Cloud,
-            contentDescription = "Pengaturan Cloud",
-            tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(20.dp),
-          )
-        }
-      }
       val downloadSucceeded = curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED
       val showConfigButton = model.configs.isNotEmpty() && downloadSucceeded
       Box(modifier = Modifier.size(42.dp), contentAlignment = Alignment.Center) {

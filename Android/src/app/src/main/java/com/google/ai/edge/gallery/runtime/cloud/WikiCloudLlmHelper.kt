@@ -17,7 +17,7 @@ import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.ToolProvider
 import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.StringReader
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -139,7 +140,12 @@ class WikiCloudLlmHelperImpl(
   private var job: Job? = null
   @Volatile private var activeConn: HttpURLConnection? = null
   @Volatile private var systemPrompt: String = ""
-  private val json = Json { ignoreUnknownKeys = true }
+  private val json = Json {
+    ignoreUnknownKeys = true
+    // Penting: encodeDefaults=true supaya "stream": true benar-benar terkirim ke provider.
+    // Tanpa ini, provider membalas non-stream dan UI tidak pernah menerima token.
+    encodeDefaults = true
+  }
 
   /** System prompt yang dipakai sebagai pesan `system` (dari Agent Skills: skills + MCP). */
   fun setSystemPrompt(prompt: String) {
@@ -230,55 +236,57 @@ class WikiCloudLlmHelperImpl(
           doOutput = true
           setRequestProperty("Content-Type", "application/json")
           setRequestProperty("Authorization", "Bearer ${cfg.apiKey}")
-          setRequestProperty("Accept", "text/event-stream")
+          setRequestProperty("Accept", "text/event-stream, application/json")
+          setRequestProperty("User-Agent", "Wiki-Android/1.0")
         }
         conn.outputStream.use { it.write(body.toByteArray()) }
         activeConn = conn
         try {
-        if (conn.responseCode !in 200..299) {
-          val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP ${conn.responseCode}"
+        val code = conn.responseCode
+        if (code !in 200..299) {
+          val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
+          rollbackLastUserMessage(input)
           withContext(Dispatchers.Main) { onError("Wiki cloud error: $err") }
           return@launch
         }
         val full = StringBuilder()
-        if (!cfg.streaming) {
+        val contentType = conn.contentType.orEmpty()
+        val sseStream =
+          cfg.streaming && contentType.contains("text/event-stream", ignoreCase = true)
+        if (!sseStream) {
+          // Non-stream, atau server mengabaikan "stream": baca seluruh body.
           val text = conn.inputStream.bufferedReader().readText()
-          try {
-            val obj = json.parseToJsonElement(text).jsonObject
-            val content = obj["choices"]?.jsonArray?.getOrNull(0)?.jsonObject
-              ?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content ?: ""
+          val parsed = parseNonStreamResponse(text)
+          if (parsed != null) {
+            val (content, reasoning) = parsed
+            if (reasoning.isNotEmpty()) {
+              withContext(Dispatchers.Main) { resultListener("", false, reasoning) }
+            }
             if (content.isNotEmpty()) {
               full.append(content)
               withContext(Dispatchers.Main) { resultListener(content, false, null) }
             }
-          } catch (_: Exception) {
+          } else if (text.contains("data:")) {
+            // Server mengirim SSE walau Content-Type tidak menyebutkannya.
+            consumeSseStream(StringReader(text), full, resultListener)
+          } else {
+            rollbackLastUserMessage(input)
             withContext(Dispatchers.Main) { onError("Wiki cloud error: respons non-stream tak terbaca") }
             return@launch
           }
-          history.add(WikiChatMessage("assistant", full.toString()))
-          withContext(Dispatchers.Main) { resultListener("", true, null) }
-          return@launch
-        }
-        BufferedReader(InputStreamReader(conn.inputStream)).use { reader ->
-          var line: String?
-          while (reader.readLine().also { line = it } != null) {
-            val l = line!!.trim()
-            if (l.isEmpty()) continue
-            if (!l.startsWith("data:")) continue
-            val data = l.removePrefix("data:").trim()
-            if (data == "[DONE]") break
-            try {
-              val obj = json.parseToJsonElement(data).jsonObject
-              val delta = obj["choices"]?.jsonArray?.getOrNull(0)?.jsonObject
-                ?.get("delta")?.jsonObject?.get("content")?.jsonPrimitive?.content
-                ?: obj["choices"]?.jsonArray?.getOrNull(0)?.jsonObject
-                  ?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content
-                ?: ""
-              if (delta.isNotEmpty()) {
-                full.append(delta)
-                withContext(Dispatchers.Main) { resultListener(delta, false, null) }
+        } else {
+          val rawFallback = consumeSseStream(conn.inputStream.bufferedReader(), full, resultListener)
+          if (full.isEmpty()) {
+            // Sebagian server membalas JSON biasa walau diminta stream.
+            parseNonStreamResponse(rawFallback)?.let { (content, reasoning) ->
+              if (reasoning.isNotEmpty()) {
+                withContext(Dispatchers.Main) { resultListener("", false, reasoning) }
               }
-            } catch (_: Exception) { /* abaikan chunk non-JSON */ }
+              if (content.isNotEmpty()) {
+                full.append(content)
+                withContext(Dispatchers.Main) { resultListener(content, false, null) }
+              }
+            }
           }
         }
         history.add(WikiChatMessage("assistant", full.toString()))
@@ -289,9 +297,76 @@ class WikiCloudLlmHelperImpl(
         }
       } catch (e: Exception) {
         if (e is kotlinx.coroutines.CancellationException) return@launch
+        rollbackLastUserMessage(input)
         withContext(Dispatchers.Main) { onError(e.message ?: "Wiki cloud error") }
       }
     }
+  }
+
+  /** Buang pesan user terakhir setelah kegagalan, supaya percakapan tidak menyimpan giliran gagal. */
+  private fun rollbackLastUserMessage(input: String) {
+    val last = history.lastOrNull()
+    if (last != null && last.role == "user" && last.content == input) {
+      history.removeAt(history.lastIndex)
+    }
+  }
+
+  /** Parse respons JSON biasa (non-stream): pasangan (content, reasoning), atau null bila rusak. */
+  private fun parseNonStreamResponse(text: String): Pair<String, String>? =
+    try {
+      val obj = json.parseToJsonElement(text).jsonObject
+      val message = obj["choices"]?.jsonArray?.getOrNull(0)?.jsonObject?.get("message")?.jsonObject
+      val content = message?.get("content")?.jsonPrimitive?.contentOrNull ?: ""
+      val reasoning =
+        message?.get("reasoning_content")?.jsonPrimitive?.contentOrNull
+          ?: message?.get("reasoning")?.jsonPrimitive?.contentOrNull
+          ?: ""
+      if (content.isEmpty() && reasoning.isEmpty()) null else content to reasoning
+    } catch (_: Exception) {
+      null
+    }
+
+  /**
+   * Baca aliran SSE: teruskan konten & reasoning (CoT) ke [resultListener]. Mengembalikan
+   * baris non-SSE (kalau ada) sebagai fallback untuk respons JSON biasa.
+   */
+  private suspend fun consumeSseStream(
+    reader: BufferedReader,
+    full: StringBuilder,
+    resultListener: ResultListener,
+  ): String {
+    val rawFallback = StringBuilder()
+    reader.use { r ->
+      var line: String?
+      while (r.readLine().also { line = it } != null) {
+        val l = line!!.trim()
+        if (l.isEmpty()) continue
+        if (!l.startsWith("data:")) {
+          rawFallback.append(l)
+          continue
+        }
+        val data = l.removePrefix("data:").trim()
+        if (data == "[DONE]") break
+        try {
+          val obj = json.parseToJsonElement(data).jsonObject
+          val choice = obj["choices"]?.jsonArray?.getOrNull(0)?.jsonObject
+          val chunk = choice?.get("delta")?.jsonObject ?: choice?.get("message")?.jsonObject
+          val reasoning =
+            chunk?.get("reasoning_content")?.jsonPrimitive?.contentOrNull
+              ?: chunk?.get("reasoning")?.jsonPrimitive?.contentOrNull
+              ?: ""
+          val delta = chunk?.get("content")?.jsonPrimitive?.contentOrNull ?: ""
+          if (reasoning.isNotEmpty()) {
+            withContext(Dispatchers.Main) { resultListener("", false, reasoning) }
+          }
+          if (delta.isNotEmpty()) {
+            full.append(delta)
+            withContext(Dispatchers.Main) { resultListener(delta, false, null) }
+          }
+        } catch (_: Exception) { /* abaikan chunk non-JSON */ }
+      }
+    }
+    return rawFallback.toString()
   }
 
   /**

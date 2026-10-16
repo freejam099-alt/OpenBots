@@ -136,6 +136,7 @@ constructor(
       category = Category.LLM,
       iconVectorResourceId = R.drawable.agent,
       newFeature = true,
+      agentNameRes = R.string.chat_agent_agent_name,
       models = mutableListOf(),
       description = context.getString(R.string.task_desc_agent_skills),
       shortDescription = context.getString(R.string.task_short_desc_agent_skills),

@@ -554,6 +554,7 @@
   <string name="cd_import_model_from_local_file_button" translatable="true" description="Accessibility description for the option to import a model from a local file. [CHAR_LIMIT=32]">Import model from local file</string>
   <!-- Content description spoken when the back arrow icon is focused. -->
   <string name="cd_navigate_back_icon" translatable="true" description="Accessibility description for the back navigation button. [CHAR_LIMIT=18]">Go back</string>
+  <string name="cd_cloud_settings_icon" translatable="true" description="Accessibility description for the cloud settings button in chat. [CHAR_LIMIT=22]">Cloud settings</string>
   <!-- Content description spoken when the settings icon is focused. -->
   <string name="cd_app_settings_icon" translatable="true" description="Accessibility description for the app settings button. [CHAR_LIMIT=18]">Settings</string>
   <!-- Content description spoken when the done icon is focused. -->

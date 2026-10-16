@@ -62,6 +62,7 @@
         android:roundIcon="${appIcon}"
         android:supportsRtl="true"
         android:theme="@style/Theme.Gallery"
+        android:usesCleartextTraffic="true"
         tools:targetApi="31">
         <uses-native-library android:name="libedgetpu_util.so" android:required="false" />
         <uses-native-library android:name="libedgetpu_tachyon.google.so" android:required="false" />

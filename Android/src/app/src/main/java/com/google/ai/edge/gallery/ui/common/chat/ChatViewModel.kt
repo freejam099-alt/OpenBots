@@ -608,7 +608,7 @@ abstract class ChatViewModel(
     addItemDescription: String,
     customData: Any? = null,
   ) {
-    val accelerator = model.currentAccelerator?.name ?: ""
+    val accelerator = if (model.isCloud) "" else model.currentAccelerator?.name ?: ""
     val newMessagesByModel = _uiState.value.messagesByModel.toMutableMap()
     val newMessages = newMessagesByModel[model.name]?.toMutableList() ?: mutableListOf()
 

@@ -22,6 +22,7 @@ import com.google.ai.edge.gallery.agent.sessions.LlmSessionManager
 import com.google.ai.edge.gallery.agent.sessions.SessionConfig
 import com.google.ai.edge.gallery.agent.sessions.generateSessionId
 import com.google.ai.edge.gallery.data.Model
+import com.google.ai.edge.gallery.runtime.cloud.WikiCloudLlmHelper
 import com.google.ai.edge.gallery.runtime.runtimeHelper
 import com.google.ai.edge.gallery.skills.SkillsProvider
 import com.google.ai.edge.gallery.tools.ToolDispatcher
@@ -68,6 +69,9 @@ open class DefaultAgentRuntimeExecutor(
   /** Atomic reference to the active session. */
   private val activeSession = AtomicReference<ActiveSession?>(null)
 
+  /** Scope event aktif, supaya [interrupt] bisa menutup stream dengan rapi. */
+  private val activeEventScope = AtomicReference<ProducerScope<AgentEvent>?>(null)
+
   override val activeSessionId: String?
     get() = llmSessionManager.activeSessionId
 
@@ -106,8 +110,12 @@ open class DefaultAgentRuntimeExecutor(
     val wasModelInitialized =
       config.model.initStatusFlow.value is Model.InitializationStatus.Initialized
 
-    // Wiki cloud: tidak ada engine lokal. Cukup tandai model siap dan lanjut.
+    // Wiki cloud: tidak ada engine lokal. Kirim system prompt (skills + MCP + instruksi) ke
+    // helper cloud, tandai model siap, lalu lanjut.
     if (config.model.isCloud) {
+      (config.model.runtimeHelper as? WikiCloudLlmHelper)?.setSystemPrompt(
+        config.systemInstruction ?: ""
+      )
       config.model.instance = com.google.ai.edge.gallery.data.cloud.WikiCloudInstance
       llmSessionManager.setSessionConfig(sessionId = effectiveSessionId, config = sessionConfig)
       onDone("")
@@ -154,6 +162,7 @@ open class DefaultAgentRuntimeExecutor(
     request: AgentRequest,
   ): Flow<AgentEvent> = callbackFlow {
     emitEvent(AgentEvent.LoopInitiated(request = request))
+    activeEventScope.set(this)
 
     val session =
       activeSession.get() ?: error("Model not initialized in DefaultAgentRuntimeExecutor")
@@ -230,6 +239,7 @@ open class DefaultAgentRuntimeExecutor(
 
     awaitClose {
       // Clean up when flow collection is cancelled
+      activeEventScope.compareAndSet(this, null)
     }
   }
 
@@ -261,6 +271,11 @@ open class DefaultAgentRuntimeExecutor(
     val sessionId = llmSessionManager.activeSessionId ?: return
     Log.d(TAG, "Interrupting session $sessionId for model: ${curModel.name}")
     llmSessionManager.stopResponse(sessionId = sessionId, model = curModel)
+    // Tutup stream yang sedang berjalan supaya UI/flow tidak menggantung setelah Stop.
+    activeEventScope.getAndSet(null)?.let { scope ->
+      scope.trySend(AgentEvent.LoopCancelled)
+      scope.close()
+    }
   }
 
   override suspend fun resetSession(config: AgentRuntimeConfig) {
@@ -293,11 +308,14 @@ open class DefaultAgentRuntimeExecutor(
 
     // Wiki cloud: tidak ada engine lokal; cukup set ulang system prompt + sesi.
     if (config.model.isCloud) {
+      (config.model.runtimeHelper as? WikiCloudLlmHelper)?.setSystemPrompt(
+        config.systemInstruction ?: ""
+      )
       config.model.runtimeHelper.resetConversation(
         model = config.model,
         supportImage = config.supportImage,
         supportAudio = config.supportAudio,
-        systemInstruction = effectiveSystemInstruction,
+        systemInstruction = null,
         tools = listOf(),
         enableConversationConstrainedDecoding = false,
         initialMessages = config.initialMessages,

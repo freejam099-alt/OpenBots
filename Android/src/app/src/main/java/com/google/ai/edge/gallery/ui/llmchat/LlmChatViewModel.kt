@@ -195,7 +195,8 @@ open class LlmChatViewModelBase(
     allowThinking: Boolean = false,
   ) {
     observeLiveMetrics(model)
-    val accelerator = model.currentAccelerator?.name ?: ""
+    // Wiki cloud: label pengirim cukup "Agent" (tanpa akhiran "on CPU").
+    val accelerator = if (model.isCloud) "" else model.currentAccelerator?.name ?: ""
     viewModelScope.launch(Dispatchers.Default) {
       setInProgress(true)
       setPreparing(true)
@@ -213,7 +214,10 @@ open class LlmChatViewModelBase(
 
       val enableThinking =
         allowThinking &&
-          model.getBooleanConfigValue(key = ConfigKeys.ENABLE_THINKING, defaultValue = false)
+          model.getBooleanConfigValue(
+            key = ConfigKeys.ENABLE_THINKING,
+            defaultValue = model.isCloud,
+          )
       val extraContext = if (enableThinking) mapOf("enable_thinking" to "true") else emptyMap()
       val metadata =
         buildMap<String, Any> {

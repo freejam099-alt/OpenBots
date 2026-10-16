@@ -48,6 +48,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -68,6 +69,7 @@ import androidx.navigation.navArgument
 import com.google.ai.edge.gallery.GalleryEvent
 import com.google.ai.edge.gallery.customtasks.common.CustomTaskData
 import com.google.ai.edge.gallery.customtasks.common.CustomTaskDataForBuiltinTask
+import com.google.ai.edge.gallery.data.BuiltInTaskId
 import com.google.ai.edge.gallery.data.Model
 import com.google.ai.edge.gallery.data.ModelDownloadStatusType
 import com.google.ai.edge.gallery.data.Task
@@ -159,6 +161,21 @@ fun GalleryNavHost(
   var enableHomeScreenAnimation by remember { mutableStateOf(true) }
   var enableModelListAnimation by remember { mutableStateOf(true) }
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
+
+  // Wiki: begitu daftar task siap, langsung masuk ke UI Agent Skills (tanpa dashboard).
+  var startupNavigationDone by rememberSaveable { mutableStateOf(false) }
+  LaunchedEffect(modelManagerUiState.tasks) {
+    if (!startupNavigationDone && modelManagerUiState.tasks.isNotEmpty()) {
+      val agentTask = modelManagerUiState.tasks.find { it.id == BuiltInTaskId.LLM_AGENT_CHAT }
+      val cloudModel = agentTask?.models?.firstOrNull { it.isCloud }
+      if (agentTask != null && cloudModel != null) {
+        startupNavigationDone = true
+        navController.navigate("$ROUTE_MODEL/${agentTask.id}/${cloudModel.name}") {
+          popUpTo(ROUTE_HOMESCREEN) { inclusive = true }
+        }
+      }
+    }
+  }
 
   // Track whether app is in foreground.
   DisposableEffect(lifecycleOwner) {

@@ -811,7 +811,10 @@ private fun TaskList(
     initialAnimationDone = true
   }
 
-  val taskIds = listOf(BuiltInTaskId.SMART_ALBUM, BuiltInTaskId.VIDEO_MOMENT_FINDER)
+  // Wiki: hanya task yang masih terdaftar yang ditampilkan. Modul task lain sudah dihapus,
+  // jadi pencarian task harus tahan-null (`getTaskById` mengembalikan `Task?`).
+  val taskIds = listOf(BuiltInTaskId.LLM_AGENT_CHAT)
+  val hasOtherTasks = tasksByCategories.values.any { tasks -> tasks.any { it.id !in taskIds } }
 
   // The highlighted tiles at the top.
   Column(
@@ -824,35 +827,34 @@ private fun TaskList(
   ) {
     val chatToDescription =
       mapOf(
-        BuiltInTaskId.LLM_CHAT to stringResource(R.string.gemma_reskin_try_gemma_4_chat),
         // use "\u00a0" to make sure the word before and after it should always be together when
         // wrapping lines.
         BuiltInTaskId.LLM_AGENT_CHAT to stringResource(R.string.gemma_reskin_try_gemma_4_skills),
-        BuiltInTaskId.SMART_ALBUM to stringResource(R.string.task_desc_smart_album),
-        BuiltInTaskId.VIDEO_MOMENT_FINDER to stringResource(R.string.task_desc_video_moment_finder),
       )
-    for (task in taskIds.map { modelManagerViewModel.getTaskById(it)!! }) {
+    for (task in taskIds.mapNotNull { modelManagerViewModel.getTaskById(it) }) {
       TaskCard(
         task = task,
         index = 0,
         animate = !initialAnimationDone && enableAnimation,
         onClick = { navigateToTaskScreen(task) },
         modifier = Modifier.fillMaxWidth(),
-        description = chatToDescription[task.id]!!,
+        description = chatToDescription[task.id] ?: task.shortDescription,
       )
     }
 
-    Text(
-      text = stringResource(R.string.explore_other_use_cases),
-      style =
-        MaterialTheme.typography.headlineSmall.copy(
-          fontWeight = FontWeight.Medium,
-          fontSize = 20.sp,
-          lineHeight = 24.sp,
-        ),
-      color = MaterialTheme.colorScheme.onSurface,
-      modifier = Modifier.padding(top = 22.dp, bottom = 16.dp),
-    )
+    if (hasOtherTasks) {
+      Text(
+        text = stringResource(R.string.explore_other_use_cases),
+        style =
+          MaterialTheme.typography.headlineSmall.copy(
+            fontWeight = FontWeight.Medium,
+            fontSize = 20.sp,
+            lineHeight = 24.sp,
+          ),
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = 22.dp, bottom = 16.dp),
+      )
+    }
   }
 
   HorizontalPager(

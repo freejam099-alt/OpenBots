@@ -32,6 +32,8 @@ class GalleryApplication : Application() {
 
   override fun onCreate() {
     super.onCreate()
+    // Wiki: catat crash ke file agar penyebabnya bisa diperiksa lewat pengelola file.
+    WikiCrashLogger.install(this)
     // Initialize the notification schedule manager to load the scheduled notifications from the
     // disk.
     notificationScheduleManager.initialize()

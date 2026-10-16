@@ -37,14 +37,23 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.dp
 import androidx.core.animation.doOnEnd
 import androidx.core.net.toUri
 import androidx.core.os.bundleOf
@@ -124,6 +133,48 @@ class MainActivity : ComponentActivity(), VirtualDevicePermissionsHost {
             ) {
               Box(
                 modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+              )
+            }
+
+            // Wiki: tampilkan log crash terakhir (jika ada) supaya penyebabnya bisa diperiksa.
+            val clipboard = LocalClipboardManager.current
+            var crashLog by remember { mutableStateOf(WikiCrashLogger.read(this)) }
+            crashLog?.let { logText ->
+              AlertDialog(
+                onDismissRequest = {
+                  WikiCrashLogger.clear(this)
+                  crashLog = null
+                },
+                title = { Text("Crash log (Wiki)") },
+                text = {
+                  Text(
+                    logText,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier =
+                      Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState()),
+                  )
+                },
+                confirmButton = {
+                  TextButton(
+                    onClick = {
+                      clipboard.setText(AnnotatedString(logText))
+                      WikiCrashLogger.clear(this)
+                      crashLog = null
+                    }
+                  ) {
+                    Text("Copy")
+                  }
+                },
+                dismissButton = {
+                  TextButton(
+                    onClick = {
+                      WikiCrashLogger.clear(this)
+                      crashLog = null
+                    }
+                  ) {
+                    Text("Tutup")
+                  }
+                },
               )
             }
           }
